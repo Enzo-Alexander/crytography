@@ -1,0 +1,17 @@
+# Build artifacts
+*.exe
+*.o
+*.obj
+*.out
+*.ilk
+*.pdb
+*.log
+
+# Local editor configuration
+.vscode/
+
+# IDE / OS noise
+.idea/
+*.user
+Thumbs.db
+.DS_Store
