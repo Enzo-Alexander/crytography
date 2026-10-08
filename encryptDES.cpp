@@ -309,119 +309,128 @@ string xor_32bit(string a, string b)
     }
     return res;
 }
-
 int main(){
     tochildkey(key);
     while(1){
-        cout<<"Input the text you want to encrypt,the text will be encrypted in DES:"<<endl;
-        string str;//一个字符一个ASCII，一个ASCII一个字节，那么字节数应该是8的倍数，字符串长度也应该是8的倍数，不足的一律补‘0’
-        cin>>str;
-        int len_str=str.size();
-        for(int i=0;i<(8-(len_str%8))%8;i++) str+='0';//这一步保证了比特数是64的倍数，字符串长度保存在了len_str里
-        int len_newstr=str.size();//计算map的键值
-        //接下来是转比特,现在的str是明文字符串，加补0后的字符串
-        for(int i=0;i<len_newstr;i++){
-            //还要写每个字符转比特函数
-            m[i]=byteTobit(str[i]);
-        }
-        //到此为止，已经将明文字符串转成了比特串，在m里，每个键对应8个比特串
-        //为方便计算，每32位比特串合并成一个
-        map<int,string> m_32;
-        int len_m32=len_newstr/4;//新32位一个键的map长度
-        for(int i=0;i<len_newstr/4;i++){
-            m_32[i]=m[i*4]+m[i*4+1]+m[i*4+2]+m[i*4+3];
-        }
-        
-    //外层控制字符串，内层做16轮的加密
-        for(int round=0;round<len_m32;round+=2){
-            string raw64 = m_32[round] + m_32[round+1];
-            //初始置换IP
-            string ip_out = IP_perm(raw64);
-            string L = ip_out.substr(0,32);
-            string R = ip_out.substr(32,32);
-            string *l=&L;
-            string *r=&R;
-            //每次开始都用l,r指针指向的数据加密，在每次循环的结尾做指针指向的调换
-            for(int i=0;i<16;i++){
-                string temp_r;//这个是做完扩展的r
-                //这是每一轮的扩展置换
-                for(int z=0;z<8;z++){
-                    for(int j=0;j<6;j++) temp_r+=(*r)[extend[z][j]];
-                }
+        char order;
+        cout<<"Do you want to encrypt(e) or decrypt(d)?";
+        cin>>order;
+        if(order=='e'){
+            cout<<"Input the text you want to encrypt,the text will be encrypted in DES:"<<endl;
+            string str;//一个字符一个ASCII，一个ASCII一个字节，那么字节数应该是8的倍数，字符串长度也应该是8的倍数，不足的一律补‘0’
+            cin>>str;
+            //PKCS#7填充：始终补1~8字节，补的字节值=补的字节个数，这样密文自带原始长度信息，可独立解密
+            int pad = 8 - (str.size() % 8);
+            for(int i=0;i<pad;i++) str += (char)pad;
+            int len_newstr=str.size();//计算map的键值
+            //接下来是转比特,现在的str是明文字符串，加补0后的字符串
+            for(int i=0;i<len_newstr;i++){
+                //还要写每个字符转比特函数
+                m[i]=byteTobit(str[i]);
+            }
+            //到此为止，已经将明文字符串转成了比特串，在m里，每个键对应8个比特串
+            //为方便计算，每32位比特串合并成一个
+            map<int,string> m_32;
+            int len_m32=len_newstr/4;//新32位一个键的map长度
+            for(int i=0;i<len_newstr/4;i++){
+                m_32[i]=m[i*4]+m[i*4+1]+m[i*4+2]+m[i*4+3];
+            }
+            
+        //外层控制字符串，内层做16轮的加密
+            for(int round=0;round<len_m32;round+=2){
+                string raw64 = m_32[round] + m_32[round+1];
+                //初始置换IP
+                string ip_out = IP_perm(raw64);
+                string L = ip_out.substr(0,32);
+                string R = ip_out.substr(32,32);
+                string *l=&L;
+                string *r=&R;
+                //每次开始都用l,r指针指向的数据加密，在每次循环的结尾做指针指向的调换
+                for(int i=0;i<16;i++){
+                    string temp_r;//这个是做完扩展的r
+                    //这是每一轮的扩展置换
+                    for(int z=0;z<8;z++){
+                        for(int j=0;j<6;j++) temp_r+=(*r)[extend[z][j]];
+                    }
 
-                string xor_r=xor_48bit(temp_r,childkey[i]);
-                string s_out = sbox_trans(xor_r);
-                string changed_r = p_change(s_out);
-                string result_r=xor_32bit(*l, changed_r);
-                *l=*r;
-                *r=result_r;
-            }
-            string feistel_out = (*r) + (*l);
-            //逆初始置换
-            string cipher64 = IP_inv_perm(feistel_out);
-            //存入密文map，round/2是分组编号
-            e[round/2] = cipher64;
-        }
-        //====输出密文====
-        string cipher_bit_all;
-        for(auto &p:e){
-            cipher_bit_all += p.second;
-        }
-        string cipher_text;
-        //每8bit转一个字符
-        for(int i=0;i+7 < cipher_bit_all.size();i+=8){
-            string eightbit = cipher_bit_all.substr(i,8);
-            cipher_text += bitToHex(eightbit);
-        }
-        cout<<"encrypt result: "<<cipher_text<<endl;
-        cout<<"Input the text you want to decrypt(just hexadecimal):"<<endl;
-        string hexCipher;
-        cin>>hexCipher;
-        string cipherAllBit = hexStrToBitStr(hexCipher);
-        int blockNum = cipherAllBit.size() / 64;
-        // 64bit分组存入de
-        for(int b=0;b<blockNum;b++)
-        {
-            de[b] = cipherAllBit.substr(b*64, 64);
-        }
-        string allDecryptBit;
-        // 对每个64bit分组解密
-        for(auto &blk : de)
-        {
-            string c64 = blk.second;
-            string ip_out = IP_perm(c64);
-            string L = ip_out.substr(0,32);
-            string R = ip_out.substr(32,32);
-            string *l=&L;
-            string *r=&R;
-            //解密：子密钥逆序 i=15 downto 0
-            for(int i=15;i>=0;i--)
-            {
-                string temp_r;
-                for(int z=0;z<8;z++){
-                    for(int j=0;j<6;j++) temp_r+=(*r)[extend[z][j]];
+                    string xor_r=xor_48bit(temp_r,childkey[i]);
+                    string s_out = sbox_trans(xor_r);
+                    string changed_r = p_change(s_out);
+                    string result_r=xor_32bit(*l, changed_r);
+                    *l=*r;
+                    *r=result_r;
                 }
-                string xor_r=xor_48bit(temp_r,childkey[i]);
-                string s_out = sbox_trans(xor_r);
-                string changed_r = p_change(s_out);
-                string result_r=xor_32bit(*l, changed_r);
-                *l=*r;
-                *r=result_r;
+                string feistel_out = (*r) + (*l);
+                //逆初始置换
+                string cipher64 = IP_inv_perm(feistel_out);
+                //存入密文map，round/2是分组编号
+                e[round/2] = cipher64;
             }
-            string feistel_out = (*r) + (*l);
-            string plain64bit = IP_inv_perm(feistel_out);
-            allDecryptBit += plain64bit;
+            //====输出密文====
+            string cipher_bit_all;
+            for(auto &p:e){
+                cipher_bit_all += p.second;
+            }
+            string cipher_text;
+            //每8bit转一个字符
+            for(int i=0;i+7 < cipher_bit_all.size();i+=8){
+                string eightbit = cipher_bit_all.substr(i,8);
+                cipher_text += bitToHex(eightbit);
+            }
+            cout<<"encrypt result: "<<cipher_text<<endl;
         }
-        //bit串转回字符
-        string decryptFullStr;
-        for(int i=0;i+7 < allDecryptBit.size();i+=8)
-        {
-            string b8 = allDecryptBit.substr(i,8);
-            decryptFullStr += bit8ToChar(b8);
+        else if(order=='d'){
+            cout<<"Input the text you want to decrypt(just hexadecimal):"<<endl;
+            string hexCipher;
+            cin>>hexCipher;
+            string cipherAllBit = hexStrToBitStr(hexCipher);
+            int blockNum = cipherAllBit.size() / 64;
+            // 64bit分组存入de
+            for(int b=0;b<blockNum;b++)
+            {
+                de[b] = cipherAllBit.substr(b*64, 64);
+            }
+            string allDecryptBit;
+            // 对每个64bit分组解密
+            for(auto &blk : de)
+            {
+                string c64 = blk.second;
+                string ip_out = IP_perm(c64);
+                string L = ip_out.substr(0,32);
+                string R = ip_out.substr(32,32);
+                string *l=&L;
+                string *r=&R;
+                //解密：子密钥逆序 i=15 downto 0
+                for(int i=15;i>=0;i--)
+                {
+                    string temp_r;
+                    for(int z=0;z<8;z++){
+                        for(int j=0;j<6;j++) temp_r+=(*r)[extend[z][j]];
+                    }
+                    string xor_r=xor_48bit(temp_r,childkey[i]);
+                    string s_out = sbox_trans(xor_r);
+                    string changed_r = p_change(s_out);
+                    string result_r=xor_32bit(*l, changed_r);
+                    *l=*r;
+                    *r=result_r;
+                }
+                string feistel_out = (*r) + (*l);
+                string plain64bit = IP_inv_perm(feistel_out);
+                allDecryptBit += plain64bit;
+            }
+            //bit串转回字符
+            string decryptFullStr;
+            for(int i=0;i+7 < allDecryptBit.size();i+=8)
+            {
+                string b8 = allDecryptBit.substr(i,8);
+                decryptFullStr += bit8ToChar(b8);
+            }
+            //PKCS#7去填充：最后一个字节的值=填充字节个数，无需依赖任何外部变量
+            int pad = (unsigned char)decryptFullStr.back();
+            string plainResult = decryptFullStr.substr(0, decryptFullStr.size() - pad);
+            cout<<"decrypt result: "<<plainResult<<endl;
         }
-        //用原始长度len_str截断，去掉加密时补的'0'
-        string plainResult = decryptFullStr.substr(0, len_str);
-        cout<<"decrypt result: "<<plainResult<<endl;
+        else break;
     }
     return 0;
 }
