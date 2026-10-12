@@ -20,7 +20,6 @@ int Rechangetable[8][8] = {
     {35,3,43,11,51,19,59,27},
     {34,2,42,10,50,18,58,26},
     {33,1,41,9,49,17,57,25}};
-
 //初始置换IP
 string IP_perm(string raw64)
 {
@@ -45,7 +44,6 @@ string IP_inv_perm(string raw64)
     }
     return res;
 }
-
 const int PC2_table[48] = {
     13,16,10,23,0,4,
     2,27,14,5,20,9,
@@ -56,8 +54,6 @@ const int PC2_table[48] = {
     43,48,38,55,33,52,
     45,41,49,35,28,31
 };
-
-
 //总体上先64个bit为一组做循环，用res字符串接住加密后的密文，解密的时候也这样
 //先将明文转ASCII，再把ASCII转比特，比特补齐到大于当前数的最小64的倍数，先记录一开始的比特数，最后先去掉补的那些
 //因为在明文的时候就补，解密出来的时候应该和当前一样。所以只需要去掉补的那些，每8位比特做一次ASCII的还原，最后还原成密文。
@@ -101,7 +97,6 @@ string hexToBit(string hex2)
     }
     return bits;
 }
-
 string hexStrToBitStr(string hexStr)
 {
     string bitAll;
@@ -112,7 +107,6 @@ string hexStrToBitStr(string hexStr)
     }
     return bitAll;
 }
-
 char bit8ToChar(string bits8)
 {
     unsigned char val = 0;
@@ -122,7 +116,6 @@ char bit8ToChar(string bits8)
     }
     return (char)val;
 }
-
 //轮密钥的左移位表
 const int shift_table[16] = {1,1,2,2,2,2,2,2,1,2,2,2,2,2,2,1};
 //左移位函数
@@ -134,7 +127,6 @@ string rotl28_str(string bitstr, int n)
     string tail = bitstr.substr(n);
     return tail + head;
 }
-
 string PC2(string in56)
 {
     string out48;
@@ -145,7 +137,6 @@ string PC2(string in56)
     return out48;
 }
 // void RoundF(string *l,string *r){
-
 // }
 int extend[8][6]={
     {31,0,1,2,3,4},
@@ -157,12 +148,10 @@ int extend[8][6]={
     {23,24,25,26,27,28},
     {27,28,29,30,31,0}
 };
-
 //这已经是经过pc1以后的56位密钥，没经过pc1是64位的比特串
 string key[2]={"1011010010011011001010010011","0110100100111001110011000101"};
 string checkkey[16][2][2];//检查每一轮移位是否正确
 vector<string> childkey; //这是每一轮用的子密钥
-
 void tochildkey(string key[2]){
     string C = key[0];
     string D = key[1];
@@ -173,20 +162,16 @@ void tochildkey(string key[2]){
         // 保存移位前
         checkkey[round][0][0] = C;
         checkkey[round][1][0] = D;
-
         // C D各自循环左移
         string C_new = rotl28_str(C, shift_n);
         string D_new = rotl28_str(D, shift_n);
-
         // 保存移位后，用于校验
         checkkey[round][0][1] = C_new;
         checkkey[round][1][1] = D_new;
-
         // 拼接CiDi为56bit，PC2压缩得到48位子密钥
         string CD56 = C_new + D_new;
         string subkey = PC2(CD56);
         childkey.push_back(subkey);
-
         // 更新C D，进入下一轮
         C = C_new;
         D = D_new;
@@ -204,7 +189,6 @@ string xor_48bit(string a, string b)
     }
     return res;
 }
-
 //8个S盒
 const int S[8][4][16] = {
     // S1
@@ -248,7 +232,6 @@ const int S[8][4][16] = {
      {7,11,4,1,9,12,14,2,0,6,10,13,15,3,5,8},
      {2,1,14,7,4,10,8,13,15,12,9,0,3,5,6,11}}
 };
-
 // S盒置换：输入48bit串，输出32bit串
 string sbox_trans(string xor_r)
 {
@@ -264,14 +247,12 @@ string sbox_trans(string xor_r)
         // 中间4位：sixbit[1],sixbit[2],sixbit[3],sixbit[4]，计算加权值，也就是转成10进制
         int col = (sixbit[1]-'0')*8 + (sixbit[2]-'0')*4 + (sixbit[3]-'0')*2 + (sixbit[4]-'0');
         int val = S[s_idx][row][col];
-
         // 把十进制val转为4位二进制字符串，高位在前
         string fourbit;
         fourbit += ( (val & 8) ? '1' : '0' );
         fourbit += ( (val & 4) ? '1' : '0' );
         fourbit += ( (val & 2) ? '1' : '0' );
         fourbit += ( (val & 1) ? '1' : '0' );
-
         out32 += fourbit;
     }
     return out32;
@@ -283,7 +264,6 @@ const int P_table[32] = {
     1,7,23,13,31,26,2,8,
     18,12,29,5,21,10,3,24
 };
-
 string p_change(string s32)
 {
     string out32;
@@ -294,7 +274,6 @@ string p_change(string s32)
     }
     return out32;
 }
-
 // 32位比特串按位异或
 string xor_32bit(string a, string b)
 {
@@ -315,15 +294,17 @@ int main(){
         char order;
         cout<<"Do you want to encrypt(e) or decrypt(d)?";
         cin>>order;
+        cin.ignore(); //吃掉cin留下的换行，防止getline读到空串
+        
         if(order=='e'){
             cout<<"Input the text you want to encrypt,the text will be encrypted in DES:"<<endl;
-            string str;//一个字符一个ASCII，一个ASCII一个字节，那么字节数应该是8的倍数，字符串长度也应该是8的倍数，不足的一律补‘0’
-            cin>>str;
+            string str;
+            getline(cin, str); // 读整行，把空格也当作字节读进去
             //PKCS#7填充：始终补1~8字节，补的字节值=补的字节个数，这样密文自带原始长度信息，可独立解密
             int pad = 8 - (str.size() % 8);
             for(int i=0;i<pad;i++) str += (char)pad;
             int len_newstr=str.size();//计算map的键值
-            //接下来是转比特,现在的str是明文字符串，加补0后的字符串
+            //接下来是转比特,现在的str是补齐后的明文字符串
             for(int i=0;i<len_newstr;i++){
                 //还要写每个字符转比特函数
                 m[i]=byteTobit(str[i]);
@@ -335,7 +316,6 @@ int main(){
             for(int i=0;i<len_newstr/4;i++){
                 m_32[i]=m[i*4]+m[i*4+1]+m[i*4+2]+m[i*4+3];
             }
-            
         //外层控制字符串，内层做16轮的加密
             for(int round=0;round<len_m32;round+=2){
                 string raw64 = m_32[round] + m_32[round+1];
@@ -352,11 +332,10 @@ int main(){
                     for(int z=0;z<8;z++){
                         for(int j=0;j<6;j++) temp_r+=(*r)[extend[z][j]];
                     }
-
-                    string xor_r=xor_48bit(temp_r,childkey[i]);
-                    string s_out = sbox_trans(xor_r);
-                    string changed_r = p_change(s_out);
-                    string result_r=xor_32bit(*l, changed_r);
+                    string xor_r=xor_48bit(temp_r,childkey[i]);//扩展后48位r和本轮密钥异或 196
+                    string s_out = sbox_trans(xor_r);//异或结果经过8个s盒变为32位 253
+                    string changed_r = p_change(s_out);//置换 287
+                    string result_r=xor_32bit(*l, changed_r);//L和置换后的r做32位异或 299
                     *l=*r;
                     *r=result_r;
                 }
